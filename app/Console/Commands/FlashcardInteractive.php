@@ -92,7 +92,21 @@ class FlashcardInteractive extends Command
      */
     private function listFlashcards(): void
     {
-        //
+        $flashcards = Flashcard::all();
+
+        if ($flashcards->isEmpty()) {
+            $this->info('No flashcards found.');
+            return;
+        }
+
+        $this->line('');
+
+        $this->line('<info>Flashcards:</info>');
+
+        $this->table(
+            ['Question', 'Answer'],
+            $flashcards->map(fn($flashcard) => [$flashcard->question, $flashcard->answer]),
+        );
     }
 
     /**
