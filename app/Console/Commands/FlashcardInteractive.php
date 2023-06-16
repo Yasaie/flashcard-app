@@ -106,6 +106,7 @@ class FlashcardInteractive extends Command
         $this->table(
             ['Question', 'Answer'],
             $flashcards->map(fn($flashcard) => [$flashcard->question, $flashcard->answer]),
+            'box',
         );
     }
 
@@ -114,7 +115,42 @@ class FlashcardInteractive extends Command
      */
     private function practiceFlashcards(): void
     {
-        //
+        $flashcards = Flashcard::all();
+
+        if ($flashcards->isEmpty()) {
+            $this->info('No flashcards found. Please create some flashcards first.');
+            return;
+        }
+
+        while (true) {
+            $this->line('');
+
+            $this->displayProgress($flashcards);
+
+            return;
+        }
+    }
+
+    /**
+     * Display the practice progress and statistics.
+     */
+    private function displayProgress($flashcards): void
+    {
+        $tableHeaders = ['Question', 'Status'];
+        $tableData = [];
+
+        $totalQuestions = $flashcards->count();
+        $correctlyAnswered = 0;
+
+        foreach ($flashcards as $flashcard) {
+            $tableData[] = [$flashcard->question, 'Not answered'];
+        }
+
+        $completionPercentage = ($correctlyAnswered / $totalQuestions) * 100;
+
+        $tableData[] = ['Total completion', "{$completionPercentage}%"];
+
+        $this->table($tableHeaders, $tableData, 'box');
     }
 
     /**
