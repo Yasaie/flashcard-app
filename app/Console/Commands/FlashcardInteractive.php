@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Flashcard;
 use Illuminate\Console\Command;
 
 class FlashcardInteractive extends Command
@@ -74,7 +75,16 @@ class FlashcardInteractive extends Command
      */
     private function createFlashcard(): void
     {
-        //
+        $question = $this->ask('Please enter the question');
+
+        $answer = $this->ask('Please enter the answer');
+
+        Flashcard::create([
+            'question' => $question,
+            'answer' => $answer,
+        ]);
+
+        $this->info('Flashcard created successfully.');
     }
 
     /**
