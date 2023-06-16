@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\FlashcardStatus;
 use App\Models\Flashcard;
 use Illuminate\Console\Command;
 
@@ -22,10 +23,17 @@ class FlashcardInteractive extends Command
     protected $description = 'Interactive CLI program for Flashcard practice';
 
     /**
+     * The username of the user.
+     */
+    private string $username;
+
+    /**
      * Execute the console command.
      */
     public function handle(): void
     {
+        $this->username = $this->ask('Please enter your name to start');
+
         $this->displayMainMenu();
     }
 
@@ -115,9 +123,7 @@ class FlashcardInteractive extends Command
      */
     private function practiceFlashcards(): void
     {
-        $flashcards = Flashcard::all();
-
-        if ($flashcards->isEmpty()) {
+        if (! Flashcard::exists()) {
             $this->info('No flashcards found. Please create some flashcards first.');
             return;
         }
@@ -125,32 +131,74 @@ class FlashcardInteractive extends Command
         while (true) {
             $this->line('');
 
-            $this->displayProgress($flashcards);
+            $this->displayProgress();
 
-            return;
+            $flashcardId = $this->ask('Enter the ID of the flashcard you want to practice (or enter 0 to exit)');
+
+            if ($flashcardId == 0) {
+                break;
+            }
+
+            $flashcard = Flashcard::find($flashcardId);
+
+            if (!$flashcard) {
+                $this->error('Flashcard not found. Please enter a valid ID.');
+                continue;
+            }
+
+            $status = $flashcard->userStatus($this->username);
+
+            if ($status === FlashcardStatus::CORRECT) {
+                $this->warn('You have already answered this flashcard correctly. Please choose another one.');
+                continue;
+            }
+
+            $userAnswer = $this->ask('Enter your answer');
+
+            $isCorrect = strtolower($flashcard->answer) === strtolower($userAnswer);
+
+            $flashcard->progress()->updateOrCreate(
+                ['username' => $this->username],
+                ['status' => $isCorrect ? FlashcardStatus::CORRECT : FlashcardStatus::INCORRECT]
+            );
+
+            if ($isCorrect) {
+                $this->info('Correct answer!');
+            } else {
+                $this->error('Incorrect answer!');
+            }
         }
     }
 
     /**
      * Display the practice progress and statistics.
      */
-    private function displayProgress($flashcards): void
+    private function displayProgress(): void
     {
-        $tableHeaders = ['Question', 'Status'];
-        $tableData = [];
+        $flashcards = Flashcard::with('progress')->get();
 
-        $totalQuestions = $flashcards->count();
+        $tableHeaders = ['ID', 'Question', 'Status'];
+        $tableRows = [];
+
         $correctlyAnswered = 0;
 
         foreach ($flashcards as $flashcard) {
-            $tableData[] = [$flashcard->question, 'Not answered'];
+            $status = $flashcard->userStatus($this->username);
+
+            if ($status === FlashcardStatus::CORRECT) {
+                $correctlyAnswered++;
+            }
+
+            $tableRows[] = [$flashcard->id, $flashcard->question, $status->title()];
         }
 
-        $completionPercentage = ($correctlyAnswered / $totalQuestions) * 100;
+        $completionPercentage = ($correctlyAnswered / $flashcards->count()) * 100;
 
-        $tableData[] = ['Total completion', "{$completionPercentage}%"];
+        $this->info('Practice Progress:');
 
-        $this->table($tableHeaders, $tableData, 'box');
+        $this->table($tableHeaders, $tableRows, 'box');
+
+        $this->line("Completion Percentage: {$completionPercentage}%");
     }
 
     /**
