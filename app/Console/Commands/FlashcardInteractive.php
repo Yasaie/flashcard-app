@@ -123,7 +123,7 @@ class FlashcardInteractive extends Command
      */
     private function practiceFlashcards(): void
     {
-        if (! Flashcard::exists()) {
+        if (!Flashcard::exists()) {
             $this->info('No flashcards found. Please create some flashcards first.');
             return;
         }
@@ -206,7 +206,29 @@ class FlashcardInteractive extends Command
      */
     private function displayStats(): void
     {
-        //
+        $flashcards = Flashcard::with('progress')->get();
+
+        $answeredQuestions = $flashcards
+            ->filter(fn($flashcard) => $flashcard->userStatus($this->username) !== FlashcardStatus::NOT_ANSWERED);
+        $correctAnswers = $flashcards
+            ->filter(fn($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
+
+        $totalFlashcards = $flashcards->count();
+        $answeredPercentage = ($answeredQuestions->count() / $totalFlashcards) * 100;
+        $correctPercentage = ($correctAnswers->count() / $totalFlashcards) * 100;
+
+        $tableHeaders = ['Total questions', 'Answered %', 'Correct %'];
+        $tableRows = [
+            [
+                'Total Questions' => $totalFlashcards,
+                'Answered %' => "{$answeredPercentage}%",
+                'Correct %' => "{$correctPercentage}%",
+            ],
+        ];
+
+        $this->info("Stats:");
+
+        $this->table($tableHeaders, $tableRows, 'box');
     }
 
     /**
