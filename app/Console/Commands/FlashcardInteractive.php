@@ -109,6 +109,7 @@ class FlashcardInteractive extends Command
 
         if ($flashcards->isEmpty()) {
             $this->info('No flashcards found.');
+
             return;
         }
 
@@ -116,7 +117,7 @@ class FlashcardInteractive extends Command
 
         $this->table(
             ['Question', 'Answer'],
-            $flashcards->map(fn($flashcard) => [$flashcard->question, $flashcard->answer]),
+            $flashcards->map(fn ($flashcard) => [$flashcard->question, $flashcard->answer]),
             'box',
         );
     }
@@ -126,8 +127,9 @@ class FlashcardInteractive extends Command
      */
     private function practiceFlashcards(): void
     {
-        if (!Flashcard::exists()) {
+        if (! Flashcard::exists()) {
             $this->info('No flashcards found. Please create some flashcards first.');
+
             return;
         }
 
@@ -144,8 +146,9 @@ class FlashcardInteractive extends Command
 
             $flashcard = Flashcard::find($flashcardId);
 
-            if (!$flashcard) {
+            if (! $flashcard) {
                 $this->error('Flashcard not found. Please enter a valid ID.');
+
                 continue;
             }
 
@@ -153,6 +156,7 @@ class FlashcardInteractive extends Command
 
             if ($status === FlashcardStatus::CORRECT) {
                 $this->warn('You have already answered this flashcard correctly. Please choose another one.');
+
                 continue;
             }
 
@@ -212,9 +216,9 @@ class FlashcardInteractive extends Command
         $flashcards = Flashcard::with('progress')->get();
 
         $answeredQuestions = $flashcards
-            ->filter(fn($flashcard) => $flashcard->userStatus($this->username) !== FlashcardStatus::NOT_ANSWERED);
+            ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) !== FlashcardStatus::NOT_ANSWERED);
         $correctAnswers = $flashcards
-            ->filter(fn($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
+            ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
 
         $totalFlashcards = $flashcards->count();
         $answeredPercentage = round(($answeredQuestions->count() / $totalFlashcards) * 100, 2);
@@ -229,7 +233,7 @@ class FlashcardInteractive extends Command
             ],
         ];
 
-        $this->info("Stats:");
+        $this->info('Stats:');
 
         $this->table($tableHeaders, $tableRows, 'box');
     }
@@ -239,10 +243,10 @@ class FlashcardInteractive extends Command
      */
     private function resetProgress(): void
     {
-        if ($this->confirm("Are you sure you want to reset all progress? This action cannot be undone.")) {
+        if ($this->confirm('Are you sure you want to reset all progress? This action cannot be undone.')) {
             FlashcardProgress::whereUsername($this->username)->delete();
 
-            $this->info("All progress has been reset.");
+            $this->info('All progress has been reset.');
         }
     }
 
@@ -257,7 +261,7 @@ class FlashcardInteractive extends Command
             if ($answer === null) {
                 $this->error('This field cannot be empty. Please try again.');
             } elseif (strlen($answer) > 255) {
-                $this->error("This field cannot be longer than 255 characters. Please try again.");
+                $this->error('This field cannot be longer than 255 characters. Please try again.');
             } else {
                 break;
             }
