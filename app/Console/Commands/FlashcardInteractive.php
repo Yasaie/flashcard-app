@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\FlashcardStatus;
 use App\Models\Flashcard;
+use App\Models\FlashcardProgress;
 use Illuminate\Console\Command;
 
 class FlashcardInteractive extends Command
@@ -68,7 +69,7 @@ class FlashcardInteractive extends Command
                     $this->displayStats();
                     break;
                 case '5':
-                    $this->resetFlashcards();
+                    $this->resetProgress();
                     break;
                 case '6':
                     return;
@@ -234,8 +235,12 @@ class FlashcardInteractive extends Command
     /**
      * Reset all flashcard progress.
      */
-    private function resetFlashcards(): void
+    private function resetProgress(): void
     {
-        //
+        if ($this->confirm("Are you sure you want to reset all progress? This action cannot be undone.")) {
+            FlashcardProgress::whereUsername($this->username)->delete();
+
+            $this->info("All progress has been reset.");
+        }
     }
 }
