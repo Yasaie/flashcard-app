@@ -25,6 +25,87 @@ class FlashcardInteractive extends Command
      */
     public function handle(): void
     {
+        $this->displayMainMenu();
+    }
+
+    /**
+     * Display the main menu and handle user input.
+     */
+    private function displayMainMenu(): void
+    {
+        while (true) {
+            $this->line('');
+            $this->line('<info>Main Menu:</info>');
+            $this->line('1. Create a flashcard');
+            $this->line('2. List all flashcards');
+            $this->line('3. Practice');
+            $this->line('4. Stats');
+            $this->line('5. Reset');
+            $this->line('6. Exit');
+
+            $choice = $this->ask('Please enter your choice');
+
+            switch ($choice) {
+                case '1':
+                    $this->createFlashcard();
+                    break;
+                case '2':
+                    $this->listFlashcards();
+                    break;
+                case '3':
+                    $this->practiceFlashcards();
+                    break;
+                case '4':
+                    $this->displayStats();
+                    break;
+                case '5':
+                    $this->resetFlashcards();
+                    break;
+                case '6':
+                    return;
+                default:
+                    $this->error('Invalid choice. Please try again.');
+            }
+        }
+    }
+
+    /**
+     * Create a new flashcard.
+     */
+    private function createFlashcard(): void
+    {
+        //
+    }
+
+    /**
+     * List all flashcards.
+     */
+    private function listFlashcards(): void
+    {
+        //
+    }
+
+    /**
+     * Practice flashcards.
+     */
+    private function practiceFlashcards(): void
+    {
+        //
+    }
+
+    /**
+     * Display the statistics.
+     */
+    private function displayStats(): void
+    {
+        //
+    }
+
+    /**
+     * Reset all flashcard progress.
+     */
+    private function resetFlashcards(): void
+    {
         //
     }
 }
