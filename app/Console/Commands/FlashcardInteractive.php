@@ -33,9 +33,17 @@ class FlashcardInteractive extends Command
      */
     public function handle(): void
     {
-        $this->username = $this->ask('Please enter your name to start');
+        $this->askUsername();
 
         $this->displayMainMenu();
+    }
+
+    /**
+     * Ask the user for their username.
+     */
+    private function askUsername(): void
+    {
+        $this->username = strtolower($this->askRequired('Please enter your name to continue'));
     }
 
     /**
@@ -45,7 +53,7 @@ class FlashcardInteractive extends Command
     {
         while (true) {
             $this->line('');
-            $this->line('<info>Main Menu:</info>');
+            $this->info('Main Menu:');
             $this->line('1. Create a flashcard');
             $this->line('2. List all flashcards');
             $this->line('3. Practice');
@@ -53,7 +61,7 @@ class FlashcardInteractive extends Command
             $this->line('5. Reset');
             $this->line('6. Exit');
 
-            $choice = $this->ask('Please enter your choice');
+            $choice = $this->ask('Please enter your choice', 6);
 
             switch ($choice) {
                 case '1':
@@ -84,13 +92,9 @@ class FlashcardInteractive extends Command
      */
     private function createFlashcard(): void
     {
-        $question = $this->ask('Please enter the question');
-
-        $answer = $this->ask('Please enter the answer');
-
         Flashcard::create([
-            'question' => $question,
-            'answer' => $answer,
+            'question' => $this->askRequired('Please enter the question'),
+            'answer' => $this->askRequired('Please enter the answer'),
         ]);
 
         $this->info('Flashcard created successfully.');
@@ -108,9 +112,7 @@ class FlashcardInteractive extends Command
             return;
         }
 
-        $this->line('');
-
-        $this->line('<info>Flashcards:</info>');
+        $this->info('Flashcards:');
 
         $this->table(
             ['Question', 'Answer'],
@@ -134,7 +136,7 @@ class FlashcardInteractive extends Command
 
             $this->displayProgress();
 
-            $flashcardId = $this->ask('Enter the ID of the flashcard you want to practice (or enter 0 to exit)');
+            $flashcardId = $this->ask('Enter the ID of the flashcard you want to practice (or enter 0 to exit)', 0);
 
             if ($flashcardId == 0) {
                 break;
@@ -154,7 +156,7 @@ class FlashcardInteractive extends Command
                 continue;
             }
 
-            $userAnswer = $this->ask('Enter your answer');
+            $userAnswer = $this->askRequired('Enter your answer');
 
             $isCorrect = strtolower($flashcard->answer) === strtolower($userAnswer);
 
@@ -193,13 +195,13 @@ class FlashcardInteractive extends Command
             $tableRows[] = [$flashcard->id, $flashcard->question, $status->title()];
         }
 
-        $completionPercentage = ($correctlyAnswered / $flashcards->count()) * 100;
+        $correctPercentage = round(($correctlyAnswered / $flashcards->count()) * 100, 2);
 
         $this->info('Practice Progress:');
 
         $this->table($tableHeaders, $tableRows, 'box');
 
-        $this->line("Completion Percentage: {$completionPercentage}%");
+        $this->line("Correct Percentage: {$correctPercentage}%");
     }
 
     /**
@@ -215,8 +217,8 @@ class FlashcardInteractive extends Command
             ->filter(fn($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
 
         $totalFlashcards = $flashcards->count();
-        $answeredPercentage = ($answeredQuestions->count() / $totalFlashcards) * 100;
-        $correctPercentage = ($correctAnswers->count() / $totalFlashcards) * 100;
+        $answeredPercentage = round(($answeredQuestions->count() / $totalFlashcards) * 100, 2);
+        $correctPercentage = round(($correctAnswers->count() / $totalFlashcards) * 100, 2);
 
         $tableHeaders = ['Total questions', 'Answered %', 'Correct %'];
         $tableRows = [
@@ -242,5 +244,25 @@ class FlashcardInteractive extends Command
 
             $this->info("All progress has been reset.");
         }
+    }
+
+    /**
+     * Ask a question and require an answer.
+     */
+    private function askRequired(string $question): string
+    {
+        do {
+            $answer = $this->ask($question);
+
+            if ($answer === null) {
+                $this->error('This field cannot be empty. Please try again.');
+            } elseif (strlen($answer) > 255) {
+                $this->error("This field cannot be longer than 255 characters. Please try again.");
+            } else {
+                break;
+            }
+        } while (true);
+
+        return $answer;
     }
 }
