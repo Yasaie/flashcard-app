@@ -2,7 +2,6 @@
 
 namespace App\Enums\Concerns;
 
-use App\Enums\MainMenu;
 use Illuminate\Support\Str;
 
 trait EnumTrait
@@ -22,7 +21,7 @@ trait EnumTrait
     {
         $array = [];
 
-        foreach (MainMenu::cases() as $item) {
+        foreach (static::cases() as $item) {
             $array[$item->value] = $item->getLabel();
         }
 
