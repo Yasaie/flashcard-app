@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\FlashcardStatus;
+use App\Enums\MainMenu;
 use App\Models\Flashcard;
 use App\Models\FlashcardProgress;
 use Illuminate\Console\Command;
@@ -52,35 +53,26 @@ class FlashcardInteractive extends Command
     private function displayMainMenu(): void
     {
         while (true) {
-            $this->line('');
-            $this->info('Main Menu:');
-            $this->line('1. Create a flashcard');
-            $this->line('2. List all flashcards');
-            $this->line('3. Practice');
-            $this->line('4. Stats');
-            $this->line('5. Reset');
-            $this->line('6. Exit');
-
-            $choice = $this->ask('Please enter your choice', 6);
+            $choice = $this->choice('Main menu', MainMenu::toArray(), 6);
 
             switch ($choice) {
-                case '1':
+                case MainMenu::CREATE_FLASHCARD->getLabel():
                     $this->createFlashcard();
                     break;
-                case '2':
+                case MainMenu::LIST_ALL_FLASHCARDS->getLabel():
                     $this->listFlashcards();
                     break;
-                case '3':
+                case MainMenu::PRACTICE->getLabel():
                     $this->practiceFlashcards();
                     break;
-                case '4':
+                case MainMenu::STATS->getLabel():
                     $this->displayStats();
                     break;
-                case '5':
+                case MainMenu::RESET->getLabel():
                     $this->resetProgress();
                     break;
-                case '6':
-                    return;
+                case MainMenu::EXIT->getLabel():
+                    return; // Exit the program
                 default:
                     $this->error('Invalid choice. Please try again.');
             }
@@ -196,7 +188,7 @@ class FlashcardInteractive extends Command
                 $correctlyAnswered++;
             }
 
-            $tableRows[] = [$flashcard->id, $flashcard->question, $status->title()];
+            $tableRows[] = [$flashcard->id, $flashcard->question, $status->getLabel()];
         }
 
         $correctPercentage = round(($correctlyAnswered / $flashcards->count()) * 100, 2);
@@ -221,8 +213,12 @@ class FlashcardInteractive extends Command
             ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
 
         $totalFlashcards = $flashcards->count();
-        $answeredPercentage = round(($answeredQuestions->count() / $totalFlashcards) * 100, 2);
-        $correctPercentage = round(($correctAnswers->count() / $totalFlashcards) * 100, 2);
+        $answeredPercentage = $answeredQuestions->count()
+            ? round(($answeredQuestions->count() / $totalFlashcards) * 100, 2)
+            : 0;
+        $correctPercentage = $correctAnswers->count()
+            ? round(($correctAnswers->count() / $totalFlashcards) * 100, 2)
+            : 0;
 
         $tableHeaders = ['Total questions', 'Answered %', 'Correct %'];
         $tableRows = [
