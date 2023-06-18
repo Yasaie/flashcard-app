@@ -19,5 +19,4 @@ enum MainMenu: int
     case RESET = 5;
 
     case EXIT = 6;
-
 }

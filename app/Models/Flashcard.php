@@ -34,12 +34,14 @@ class Flashcard extends Model
      */
     public function userStatus(string $username): FlashcardStatus
     {
+        // To avoid unnecessary database queries, we will check if the progress relationship is already loaded.
         $progressModel = $this->relationLoaded('progress')
             ? $this->progress
             : $this->progress();
 
         $progress = $progressModel->firstWhere('username', $username);
 
+        // If no progress exists, the status is NOT_ANSWERED
         return $progress ? $progress->status : FlashcardStatus::NOT_ANSWERED;
     }
 }

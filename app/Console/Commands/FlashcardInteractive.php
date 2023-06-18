@@ -44,6 +44,7 @@ class FlashcardInteractive extends Command
      */
     private function askUsername(): void
     {
+        // We will convert the username to lowercase to avoid case sensitivity issues
         $this->username = strtolower($this->askRequired('Please enter your name to continue'));
     }
 
@@ -154,8 +155,10 @@ class FlashcardInteractive extends Command
 
             $userAnswer = $this->askRequired('Enter your answer');
 
+            // We will convert the answer to lowercase to avoid case sensitivity issues
             $isCorrect = strtolower($flashcard->answer) === strtolower($userAnswer);
 
+            // We store the progress in new record if it doesn't exist, or update the existing one
             $flashcard->progress()->updateOrCreate(
                 ['username' => $this->username],
                 ['status' => $isCorrect ? FlashcardStatus::CORRECT : FlashcardStatus::INCORRECT]
@@ -191,7 +194,10 @@ class FlashcardInteractive extends Command
             $tableRows[] = [$flashcard->id, $flashcard->question, $status->getLabel()];
         }
 
-        $correctPercentage = round(($correctlyAnswered / $flashcards->count()) * 100, 2);
+        // We return zero to avoid division by zero error
+        $correctPercentage = $correctlyAnswered
+            ? round(($correctlyAnswered / $flashcards->count()) * 100, 2)
+            : 0;
 
         $this->info('Practice Progress:');
 
@@ -205,6 +211,8 @@ class FlashcardInteractive extends Command
      */
     private function displayStats(): void
     {
+        // We fetch all flashcards with their progress and later filter
+        // them based on the user's progress to avoid multiple queries
         $flashcards = Flashcard::with('progress')->get();
 
         $answeredQuestions = $flashcards
@@ -213,6 +221,8 @@ class FlashcardInteractive extends Command
             ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
 
         $totalFlashcards = $flashcards->count();
+
+        // We return zero to avoid division by zero error
         $answeredPercentage = $answeredQuestions->count()
             ? round(($answeredQuestions->count() / $totalFlashcards) * 100, 2)
             : 0;
@@ -221,6 +231,8 @@ class FlashcardInteractive extends Command
             : 0;
 
         $tableHeaders = ['Total questions', 'Answered %', 'Correct %'];
+
+        // Table only has one row with the stats
         $tableRows = [
             [
                 'Total Questions' => $totalFlashcards,

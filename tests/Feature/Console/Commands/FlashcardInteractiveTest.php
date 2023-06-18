@@ -26,15 +26,25 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 1);
+        $this->assertMainMenu($command, MainMenu::CREATE_FLASHCARD);
 
-        $command
-            ->expectsQuestion('Please enter the question', 'What is the capital of Iran?')
-            ->expectsQuestion('Please enter the answer', 'Tehran')
-            ->expectsOutput('Flashcard created successfully.');
+        // Question cannot be empty
+        $command->expectsQuestion('Please enter the question', null)
+            ->expectsOutput('This field cannot be empty. Please try again.')
+            ->expectsQuestion('Please enter the question', 'What is the capital of Iran?');
+
+        // Answer cannot be empty
+        $command->expectsQuestion('Please enter the answer', null)
+            ->expectsOutput('This field cannot be empty. Please try again.');
+
+        $command->expectsQuestion('Please enter the answer', 'Tehran');
+
+        $command->expectsOutput('Flashcard created successfully.');
 
         $this->assertMainMenu($command);
 
+        // We have to run the command before we can assert the database,
+        // because the command is not run until test destructs
         $command->run();
 
         $this->assertDatabaseHas('flashcards', [
@@ -49,7 +59,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 2);
+        $this->assertMainMenu($command, MainMenu::LIST_ALL_FLASHCARDS);
 
         $command->expectsOutput('No flashcards found.');
 
@@ -64,7 +74,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 2);
+        $this->assertMainMenu($command, MainMenu::LIST_ALL_FLASHCARDS);
 
         $command
             ->expectsOutput('Flashcards:')
@@ -83,7 +93,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 3);
+        $this->assertMainMenu($command, MainMenu::PRACTICE);
 
         $command->expectsOutput('No flashcards found. Please create some flashcards first.');
 
@@ -98,10 +108,11 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 3);
+        $this->assertMainMenu($command, MainMenu::PRACTICE);
 
         $this->assertDisplayProgress($command, $flashcard);
 
+        // With an incorrect ID (ID + 1) the user will get an error message
         $this->assertPractice($command, $flashcard->id + 1);
 
         $command->expectsOutput('Flashcard not found. Please enter a valid ID.');
@@ -115,6 +126,7 @@ class FlashcardInteractiveTest extends TestCase
 
     public function testPracticeFlashcardsWhenAlreadyAnsweredCorrectly(): void
     {
+        // A flashcard answered correctly by the user
         $flashcardProgress = FlashcardProgress::factory()->create([
             'username' => 'payam',
             'status' => FlashcardStatus::CORRECT,
@@ -126,10 +138,11 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 3);
+        $this->assertMainMenu($command, MainMenu::PRACTICE);
 
         $this->assertDisplayProgress($command, $flashcard, FlashcardStatus::CORRECT, 100);
 
+        // User cannot practice this flashcard since it was answered correctly
         $this->assertPractice($command, $flashcard->id);
 
         $command->expectsOutput('You have already answered this flashcard correctly. Please choose another one.');
@@ -143,6 +156,7 @@ class FlashcardInteractiveTest extends TestCase
 
     public function testPracticeFlashcardsWhenAlreadyAnsweredCorrectlyByOtherUser(): void
     {
+        // A flashcard answered correctly by another user
         $flashcardProgress = FlashcardProgress::factory()->create([
             'username' => 'thomas',
             'status' => FlashcardStatus::CORRECT,
@@ -154,10 +168,12 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 3);
+        $this->assertMainMenu($command, MainMenu::PRACTICE);
 
         $this->assertDisplayProgress($command, $flashcard);
 
+        // User can practice this flashcard since it was answered correctly
+        // by another user, so for this user it is not answered yet
         $this->assertPractice($command, $flashcard->id);
 
         $command->expectsQuestion('Enter your answer', $flashcard->answer)
@@ -172,16 +188,19 @@ class FlashcardInteractiveTest extends TestCase
 
     public function testPracticeFlashcardsWhenNotAnswered(): void
     {
+        // A flashcard with no progress
         $flashcard = Flashcard::factory()->create();
 
         $command = $this->getCommand();
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 3);
+        $this->assertMainMenu($command, MainMenu::PRACTICE);
 
         $this->assertDisplayProgress($command, $flashcard);
 
+        // User can practice this flashcard since they never answered it,
+        // and with correct answer it will be marked as correct
         $this->assertPractice($command, $flashcard->id);
 
         $command->expectsQuestion('Enter your answer', $flashcard->answer)
@@ -196,16 +215,19 @@ class FlashcardInteractiveTest extends TestCase
 
     public function testPracticeFlashcardsWhenAnsweredIncorrectly(): void
     {
+        // A flashcard with no progress
         $flashcard = Flashcard::factory()->create();
 
         $command = $this->getCommand();
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 3);
+        $this->assertMainMenu($command, MainMenu::PRACTICE);
 
         $this->assertDisplayProgress($command, $flashcard);
 
+        // User can practice this flashcard since they never answered it,
+        // and with wrong answer it will be marked as incorrect
         $this->assertPractice($command, $flashcard->id);
 
         $command->expectsQuestion('Enter your answer', $flashcard->answer.'Wrong answer')
@@ -213,6 +235,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertDisplayProgress($command, $flashcard, FlashcardStatus::INCORRECT);
 
+        // User can practice the same flashcard again if they answered incorrectly
         $this->assertPractice($command, $flashcard->id);
 
         $command->expectsQuestion('Enter your answer', $flashcard->answer)
@@ -231,7 +254,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 4);
+        $this->assertMainMenu($command, MainMenu::STATS);
 
         $this->assertStats($command);
 
@@ -265,7 +288,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 4);
+        $this->assertMainMenu($command, MainMenu::STATS);
 
         // 4 flashcards
         // 1 correct (only current user answer counts)
@@ -303,7 +326,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 5);
+        $this->assertMainMenu($command, MainMenu::RESET);
 
         $command
             ->expectsConfirmation('Are you sure you want to reset all progress? This action cannot be undone.', 'yes')
@@ -311,6 +334,8 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertMainMenu($command);
 
+        // We have to run the command before we can assert the database,
+        // because the command is not run until test destructs
         $command->run();
 
         $this->assertDatabaseMissing('flashcard_progress', [
@@ -349,13 +374,16 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
-        $this->assertMainMenu($command, 5);
+        $this->assertMainMenu($command, MainMenu::RESET);
 
-        $command
-            ->expectsConfirmation('Are you sure you want to reset all progress? This action cannot be undone.');
+        $command->expectsConfirmation(
+            'Are you sure you want to reset all progress? This action cannot be undone.',
+        );
 
         $this->assertMainMenu($command);
 
+        // We have to run the command before we can assert the database,
+        // because the command is not run until test destructs
         $command->run();
 
         $this->assertDatabaseCount('flashcard_progress', 3);
@@ -367,6 +395,7 @@ class FlashcardInteractiveTest extends TestCase
 
         $this->assertAskUsername($command);
 
+        // The default choice is exit
         $this->assertMainMenu($command);
     }
 
@@ -389,11 +418,11 @@ class FlashcardInteractiveTest extends TestCase
     /**
      * Assert the main menu.
      */
-    private function assertMainMenu(PendingCommand $command, int $choice = 6): void
+    private function assertMainMenu(PendingCommand $command, MainMenu $choice = MainMenu::EXIT): void
     {
         $command->expectsChoice(
             'Main menu',
-            MainMenu::from($choice)->getLabel(),
+            $choice->getLabel(),
             MainMenu::toArray(),
         );
     }
@@ -431,6 +460,9 @@ class FlashcardInteractiveTest extends TestCase
         $command->expectsQuestion('Enter the ID of the flashcard you want to practice (or enter 0 to exit)', $id);
     }
 
+    /**
+     * Assert the stats table.
+     */
     private function assertStats(
         PendingCommand $command,
         int $totalFlashcards = 0,
