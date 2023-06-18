@@ -194,10 +194,7 @@ class FlashcardInteractive extends Command
             $tableRows[] = [$flashcard->id, $flashcard->question, $status->getLabel()];
         }
 
-        // We return zero to avoid division by zero error
-        $correctPercentage = $correctlyAnswered
-            ? round(($correctlyAnswered / $flashcards->count()) * 100, 2)
-            : 0;
+        $correctPercentage = $this->getPercentage($correctlyAnswered, $flashcards->count());
 
         $this->info('Practice Progress:');
 
@@ -221,14 +218,8 @@ class FlashcardInteractive extends Command
             ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
 
         $totalFlashcards = $flashcards->count();
-
-        // We return zero to avoid division by zero error
-        $answeredPercentage = $answeredQuestions->count()
-            ? round(($answeredQuestions->count() / $totalFlashcards) * 100, 2)
-            : 0;
-        $correctPercentage = $correctAnswers->count()
-            ? round(($correctAnswers->count() / $totalFlashcards) * 100, 2)
-            : 0;
+        $answeredPercentage = $this->getPercentage($answeredQuestions->count(), $totalFlashcards);
+        $correctPercentage = $this->getPercentage($correctAnswers->count(), $totalFlashcards);
 
         $tableHeaders = ['Total questions', 'Answered %', 'Correct %'];
 
@@ -276,5 +267,14 @@ class FlashcardInteractive extends Command
         } while (true);
 
         return $answer;
+    }
+
+    /**
+     * Get the percentage of two numbers.
+     */
+    private function getPercentage(float $first, float $second): float
+    {
+        // We return zero to avoid division by zero error
+        return $first ? round(($first / $second) * 100, 2) : 0;
     }
 }
