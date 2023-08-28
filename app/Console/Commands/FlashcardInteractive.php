@@ -7,6 +7,7 @@ use App\Enums\MainMenu;
 use App\Models\Flashcard;
 use App\Models\FlashcardProgress;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 
 class FlashcardInteractive extends Command
 {
@@ -71,6 +72,9 @@ class FlashcardInteractive extends Command
                     break;
                 case MainMenu::RESET->getLabel():
                     $this->resetProgress();
+                    break;
+                case MainMenu::DELETE_FLASHCARD->getLabel():
+                    $this->deleteFlashcard();
                     break;
                 case MainMenu::EXIT->getLabel():
                     return; // Exit the program
@@ -180,21 +184,22 @@ class FlashcardInteractive extends Command
         $flashcards = Flashcard::with('progress')->get();
 
         $tableHeaders = ['ID', 'Question', 'Status'];
-        $tableRows = [];
 
-        $correctlyAnswered = 0;
+        $tableRows = $flashcards
+            ->map(fn ($flashcard) => [
+                $flashcard->id,
+                $flashcard->question,
+                $flashcard->userStatus($this->username)->getLabel(),
+            ]);
 
-        foreach ($flashcards as $flashcard) {
-            $status = $flashcard->userStatus($this->username);
+        $correctAnswers = Flashcard::query()
+            ->whereHas('progress', fn (Builder $query) => $query
+                ->where('username', $this->username)
+                ->where('status', FlashcardStatus::CORRECT)
+            )
+            ->count();
 
-            if ($status === FlashcardStatus::CORRECT) {
-                $correctlyAnswered++;
-            }
-
-            $tableRows[] = [$flashcard->id, $flashcard->question, $status->getLabel()];
-        }
-
-        $correctPercentage = $this->getPercentage($correctlyAnswered, $flashcards->count());
+        $correctPercentage = $this->getPercentage($correctAnswers, $flashcards->count());
 
         $this->info('Practice Progress:');
 
@@ -208,18 +213,24 @@ class FlashcardInteractive extends Command
      */
     private function displayStats(): void
     {
-        // We fetch all flashcards with their progress and later filter
-        // them based on the user's progress to avoid multiple queries
-        $flashcards = Flashcard::with('progress')->get();
+        $totalFlashcards = Flashcard::count();
 
-        $answeredQuestions = $flashcards
-            ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) !== FlashcardStatus::NOT_ANSWERED);
-        $correctAnswers = $flashcards
-            ->filter(fn ($flashcard) => $flashcard->userStatus($this->username) === FlashcardStatus::CORRECT);
+        $answeredQuestions = Flashcard::query()
+            ->whereHas('progress', fn (Builder $query) => $query
+                ->where('username', $this->username)
+                ->whereNot('status', FlashcardStatus::NOT_ANSWERED)
+            )
+            ->count();
 
-        $totalFlashcards = $flashcards->count();
-        $answeredPercentage = $this->getPercentage($answeredQuestions->count(), $totalFlashcards);
-        $correctPercentage = $this->getPercentage($correctAnswers->count(), $totalFlashcards);
+        $correctAnswers = Flashcard::query()
+            ->whereHas('progress', fn (Builder $query) => $query
+                ->where('username', $this->username)
+                ->where('status', FlashcardStatus::CORRECT)
+            )
+            ->count();
+
+        $answeredPercentage = $this->getPercentage($answeredQuestions, $totalFlashcards);
+        $correctPercentage = $this->getPercentage($correctAnswers, $totalFlashcards);
 
         $tableHeaders = ['Total questions', 'Answered %', 'Correct %'];
 
@@ -247,6 +258,29 @@ class FlashcardInteractive extends Command
 
             $this->info('All progress has been reset.');
         }
+    }
+
+    private function deleteFlashcard(): void
+    {
+        $this->info('');
+
+        $this->table(
+            ['ID', 'Question'],
+            Flashcard::get('id', 'question'),
+            'box',
+        );
+
+        $flashcardId = $this->ask('Please choose a flashcard by ID to delete');
+
+        $flashcard = Flashcard::find($flashcardId);
+
+        if (! $flashcard) {
+            $this->error('Flashcard not found please try another ID.');
+
+            return;
+        }
+
+        $flashcard->delete();
     }
 
     /**
